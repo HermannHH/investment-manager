@@ -37,19 +37,17 @@ def parse_balance_sheet
     end
     headings.each_with_index do |heading, key|
       reports[heading[:year_key].to_sym] = {}
-      financials.each do |fin|
-        attr_name = fin[0].content.gsub(' ', '').underscore
+      financials.select { |row| row unless row[0].content.downcase.gsub(/[[:space:]]/, '') =~ /calculationpurpose/i }.compact.each do |fin|
+        attr_name = fin[0].content.delete('^a-zA-Z').gsub(' ', '').underscore
         value = fin[key + 1].content
-        # Clean percentage
         if value =~ /%/i
-          value = value.tr("%","").to_f / 100
+          value = (value.delete('^0-9.').to_f / 100.to_f).to_f
         elsif value.starts_with?('(')
-          value = "-#{value.delete('^0-9')}".to_i
+          value = "-#{value.delete('^0-9.%')}".to_f
         else
-          value = value.delete('^0-9').to_i
+          value = value.delete('^0-9.%').to_f
         end
-        # value = BigDecimal(value.delete('^0-9'), 6)
-        reports[heading[:year_key].to_sym][attr_name.to_sym] = value
+        reports[heading[:year_key].to_sym][attr_name.to_sym] = BigDecimal(value, 2)
       end
     end
   end
